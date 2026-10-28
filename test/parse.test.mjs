@@ -44,6 +44,18 @@ test('dedupes the same report reachable twice', () => {
   assert.equal(findReports([reportNode, [reportNode]]).length, 1);
 });
 
+test('keeps citations without a known source as they were', () => {
+  const [r] = findReports([[...reportNode.slice(0, 4), 'A [cite: 1, 9]. B [cite: 9].', reportNode[5]]]);
+  assert.equal(reportToMarkdown(r).split('\n')[0], 'A[^1]. B [cite: 9].');
+});
+
+test('skips a malformed payload but keeps the intact ones', () => {
+  const good = JSON.stringify([['wrb.fr', 'hNvQHb', JSON.stringify([[reportNode]])]]);
+  const bad = JSON.stringify([['wrb.fr', 'hNvQHb', '{not json']]);
+  const reports = parseBatchResponse(`)]}'\n${bad}\n${good}\n`, 'hNvQHb').flatMap(findReports);
+  assert.equal(reports.length, 1);
+});
+
 // Optional check against a real captured response (not committed: private data).
 const real = process.env.GEMINI_MD_FIXTURE;
 test('real capture: every cited number has a source', { skip: !real || !existsSync(real) }, () => {

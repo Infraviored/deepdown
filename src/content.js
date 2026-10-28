@@ -46,7 +46,8 @@
   function reportsFor(id, refresh) {
     if (refresh || !cache.has(id)) {
       const p = fetchReports(id);
-      p.catch(() => cache.delete(id));
+      // Only evict our own entry: a newer fetch may have replaced it.
+      p.catch(() => cache.get(id) === p && cache.delete(id));
       cache.set(id, p);
     }
     return cache.get(id);
@@ -58,16 +59,23 @@
     return el && !el.classList.contains('action-buttons') ? el.textContent.trim() : '';
   }
 
-  // The response lists turns newest first, so the first title match is the
-  // version currently shown. The report id from the menu wins when present.
-  async function currentReport({ reportId, title }, refresh) {
+  // The report id from the menu identifies the report exactly. Without one,
+  // fall back to the panel title (the response lists turns newest first, so
+  // the first match is the version shown), or to the only report there is.
+  function pick(reports, { reportId, title }) {
+    if (reportId) return reports.find((r) => r.id === reportId);
+    return reports.find((r) => r.title === title) || (reports.length === 1 ? reports[0] : undefined);
+  }
+
+  // A miss in cached data usually means the cache predates the report (it was
+  // still being written), so refetch once before giving up.
+  async function currentReport(target, refresh) {
     const id = chatId();
     if (!id) throw new Error('No chat id in URL');
-    const reports = await reportsFor(id, refresh);
-    if (!reports.length) throw new Error('No Deep Research report in this chat');
-    return (
-      (reportId && reports.find((r) => r.id === reportId)) || reports.find((r) => r.title === title) || reports[0]
-    );
+    let report = pick(await reportsFor(id, refresh), target);
+    if (!report && !refresh) report = pick(await reportsFor(id, true), target);
+    if (!report) throw new Error('report not found in this chat (it may be more than 10 turns back)');
+    return report;
   }
 
   // Gemini's own menu items carry the report id ("im_…") inside the base64
@@ -84,8 +92,20 @@
   }
 
   function fileName(report) {
-    const base = (report.title || 'gemini-deep-research').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
-    return base.slice(0, 120) + '.md';
+    const clean = (report.title || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '').replace(/\s+/g, ' ').trim();
+    // Cut by code points so an emoji is never split in half.
+    const base = Array.from(clean).slice(0, 120).join('').trim().replace(/^\.+/, '');
+    return (base || 'gemini-deep-research') + '.md';
+  }
+
+  // ClipboardItem accepts a promise, so the write is registered while the
+  // click's user activation is fresh even if the report still has to load.
+  function copyMarkdown(mdPromise) {
+    if (typeof ClipboardItem === 'function' && navigator.clipboard.write) {
+      const blob = mdPromise.then((md) => new Blob([md], { type: 'text/plain' }));
+      return navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
+    }
+    return mdPromise.then((md) => navigator.clipboard.writeText(md));
   }
 
   function download(name, text) {
@@ -137,28 +157,39 @@
     return item;
   }
 
+  // Returns false while the menu has no items yet, so the caller retries.
   function extendMenu(menu, panel) {
     const template = menu.querySelector('copy-button gem-menu-item') || menu.querySelector('gem-menu-item');
-    if (!template) return;
+    if (!template) return false;
     menu.setAttribute(MARK, '');
     const target = { reportId: reportIdFromMenu(menu), title: panelTitle(panel) };
+    // Load now, while the user picks an entry: the report may have finished
+    // since the chat was opened.
+    const id = chatId();
+    if (id) reportsFor(id, true).catch(() => {});
     const run = (action, done) => async (ev) => {
       ev.stopPropagation();
       closeMenu();
       try {
         // Shift-click refetches, e.g. after the report was edited.
-        const report = await currentReport(target, ev.shiftKey);
-        await action(reportToMarkdown(report), report);
+        const report = currentReport(target, ev.shiftKey);
+        await action(report.then(reportToMarkdown), report);
         toast(done);
       } catch (err) {
         console.error('[deepdown]', err);
         toast('Markdown export failed: ' + err.message);
       }
     };
-    const copy = menuItem(template, 'code', 'Copy as Markdown', run((md) => navigator.clipboard.writeText(md), 'Markdown copied'));
-    const save = menuItem(template, 'download', 'Download Markdown', run((md, r) => download(fileName(r), md), 'Markdown downloaded'));
+    const copy = menuItem(template, 'code', 'Copy as Markdown', run((md) => copyMarkdown(md), 'Markdown copied'));
+    const save = menuItem(
+      template,
+      'download',
+      'Download Markdown',
+      run(async (md, report) => download(fileName(await report), await md), 'Markdown downloaded'),
+    );
     const after = template.closest('copy-button') || template;
     after.after(copy, save);
+    return true;
   }
 
   // Remember which panel opened the next menu: regular chat answers have a
@@ -181,20 +212,9 @@
     .deepdown-toast.show{opacity:1;transform:translate(-50%,0)}`;
 
   function scan() {
-    for (const panel of document.querySelectorAll('deep-research-immersive-panel:not([' + MARK + '])')) {
-      panel.setAttribute(MARK, '');
-      // Prefetch so a click can write to the clipboard while the user
-      // activation is still fresh.
-      const id = chatId();
-      if (id) reportsFor(id, true).catch(() => {});
-    }
-    if (openedFrom && Date.now() - openedFrom.at < 2000) {
-      const menu = document.querySelector('.cdk-overlay-container .mat-mdc-menu-panel:not([' + MARK + '])');
-      if (menu) {
-        extendMenu(menu, openedFrom.panel);
-        openedFrom = null;
-      }
-    }
+    if (!openedFrom || Date.now() - openedFrom.at > 2000) return;
+    const menu = document.querySelector('.cdk-overlay-container .mat-mdc-menu-panel:not([' + MARK + '])');
+    if (menu && extendMenu(menu, openedFrom.panel)) openedFrom = null;
   }
 
   function start() {

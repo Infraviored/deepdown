@@ -18,7 +18,11 @@
       }
       for (const entry of chunk) {
         if (Array.isArray(entry) && entry[0] === 'wrb.fr' && entry[1] === rpcId && typeof entry[2] === 'string') {
-          payloads.push(JSON.parse(entry[2]));
+          try {
+            payloads.push(JSON.parse(entry[2]));
+          } catch {
+            // A broken chunk must not cost us the intact ones.
+          }
         }
       }
     }
@@ -90,14 +94,15 @@
   function reportToMarkdown(report) {
     let md = report.markdown
       .replace(/\[cite_start\]/g, '')
-      .replace(/[ \t]*\[cite:\s*([\d,\s]+)\]/g, (_, nums) =>
-        nums
+      // Only numbers with a known source become footnotes; a marker with none
+      // stays as it was rather than pointing at footnotes that do not exist.
+      .replace(/[ \t]*\[cite:\s*([\d,\s]+)\]/g, (marker, nums) => {
+        const known = nums
           .split(',')
           .map((n) => n.trim())
-          .filter(Boolean)
-          .map((n) => `[^${n}]`)
-          .join(''),
-      )
+          .filter((n) => n && report.sources.has(Number(n)));
+        return known.length ? known.map((n) => `[^${n}]`).join('') : marker;
+      })
       .trimEnd();
 
     if (report.sources.size) {

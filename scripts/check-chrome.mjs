@@ -91,9 +91,14 @@ try {
         continue;
       }
       const page = await cdp(`/json/new?chrome-extension://${extId}/manifest.json`);
-      await sleep(500);
-      const text = await evaluate(page, 'document.body ? document.body.innerText : ""');
-      await cdp(`/json/close/${page.id}`).catch(() => {});
+      let text;
+      try {
+        await sleep(500);
+        text = await evaluate(page, 'document.body ? document.body.innerText : ""');
+      } finally {
+        // close even when evaluate failed, or retries pile up tabs
+        await cdp(`/json/close/${page.id}`).catch(() => {});
+      }
       ok = typeof text === 'string' && text.includes(`"version": "${manifest.version}"`);
       why = ok ? '' : 'extension not loaded (manifest.json not served under ' + extId + ')';
     } catch { /* browser still starting */ }
