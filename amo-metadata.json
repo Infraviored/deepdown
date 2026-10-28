@@ -1,0 +1,13 @@
+{
+  "categories": { "firefox": ["other"] },
+  "summary": {
+    "en-US": "Copy or download Gemini Deep Research reports as clean Markdown: headings, tables and formatting kept, citations turned into footnotes with a source list. Unofficial, not affiliated with Google.",
+    "de": "Kopiert Gemini-Deep-Research-Berichte als sauberes Markdown oder lädt sie herunter: Überschriften, Tabellen und Formatierung bleiben, Zitate werden Fußnoten mit Quellenliste. Inoffiziell, nicht mit Google verbunden."
+  },
+  "description": {
+    "en-US": "Gemini's own \"Copy contents\" gives you plain text. Deepdown adds two entries to the Share & Export menu of a Deep Research report:\n\n- Copy as Markdown\n- Download Markdown (.md file named after the report)\n\nYou get the report exactly as Gemini wrote it: headings, bold and italics, tables, code. Every citation becomes a Markdown footnote, and all sources are listed at the end with title and link. Ready for Obsidian, Notion, GitHub or any Markdown editor.\n\nNo data is collected or sent anywhere. The extension reads the report from gemini.google.com with your existing login, inside your browser.\n\nSource: https://github.com/Infraviored/deepdown",
+    "de": "Geminis eigenes \"Inhalt kopieren\" liefert nur Text ohne Formatierung. Deepdown ergänzt das Menü \"Teilen & exportieren\" eines Deep-Research-Berichts um zwei Einträge:\n\n- Als Markdown kopieren\n- Markdown herunterladen (.md-Datei mit dem Titel des Berichts)\n\nDu bekommst den Bericht genau so, wie Gemini ihn geschrieben hat: Überschriften, Fett und Kursiv, Tabellen, Code. Jedes Zitat wird eine Markdown-Fußnote, und alle Quellen stehen am Ende mit Titel und Link. Fertig für Obsidian, Notion, GitHub oder jeden Markdown-Editor.\n\nEs werden keine Daten gesammelt oder gesendet. Die Extension liest den Bericht mit deinem bestehenden Login direkt auf gemini.google.com, in deinem Browser.\n\nQuellcode: https://github.com/Infraviored/deepdown"
+  },
+  "homepage": { "en-US": "https://github.com/Infraviored/deepdown" },
+  "version": { "license": "MIT" }
+}
