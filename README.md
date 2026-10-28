@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Firefox-140%2B-FF7139?logo=firefoxbrowser&logoColor=white" alt="Firefox">
+  <a href="https://addons.mozilla.org/firefox/addon/deepdown-gemini-deep-research-/"><img src="https://img.shields.io/badge/Firefox-Add--on-FF7139?logo=firefoxbrowser&logoColor=white" alt="Firefox Add-on"></a>
   <img src="https://img.shields.io/badge/Chrome-111%2B-4285F4?logo=googlechrome&logoColor=white" alt="Chrome">
   <img src="https://img.shields.io/badge/License-MIT-0050aa" alt="MIT">
   <img src="https://img.shields.io/badge/Data-stays%20local-2a9d4a" alt="Data stays local">
